@@ -13,13 +13,16 @@ import { createContainer } from "unstated-next"; // State management
  * @returns {Buffer} Merkle Tree node
  */
 function generateLeaf(address: string, value: string): Buffer {
-  return Buffer.from(
+  console.log('generateLeaf - address', address, value)
+  const res = Buffer.from(
     // Hash in appropriate Merkle format
     ethers.utils
       .solidityKeccak256(["address", "uint256"], [address, value])
       .slice(2),
     "hex"
   );
+  console.log('generateLeaf - res', res.toString('hex'))
+  return res;
 }
 
 // Setup merkle tree
@@ -33,7 +36,7 @@ const merkleTree = new MerkleTree(
   ),
   // Hashing function
   keccak256,
-  { sortPairs: true }
+  { sortPairs: true, sortLeaves: true }
 );
 
 function useToken() {
@@ -56,6 +59,7 @@ function useToken() {
    * @returns {ethers.Contract} signer-initialized contract
    */
   const getContract = (): ethers.Contract => {
+    console.log('getContract - NEXT_PUBLIC_CONTRACT_ADDRESS', process.env.NEXT_PUBLIC_CONTRACT_ADDRESS)
     return new ethers.Contract(
       // Contract address
       process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ?? "",
@@ -94,6 +98,7 @@ function useToken() {
    * @returns {Promise<boolean>} true if already claimed, false if available
    */
   const getClaimedStatus = async (address: string): Promise<boolean> => {
+    console.log('getClaimedStatus - address', address)
     // Collect token contract
     const token: ethers.Contract = getContract();
     // Return claimed status
@@ -115,10 +120,20 @@ function useToken() {
       .parseUnits(config.airdrop[ethers.utils.getAddress(address)].toString(), config.decimals)
       .toString();
 
+
+    console.log('tree infos', merkleTree.toString())
     // Generate hashed leaf from address
     const leaf: Buffer = generateLeaf(formattedAddress, numTokens);
     // Generate airdrop proof
     const proof: string[] = merkleTree.getHexProof(leaf);
+
+    console.log('Kami-Debug infos:', {
+      token,
+      formattedAddress,
+      numTokens,
+      leaf,
+      proof
+    })
 
     // Try to claim airdrop and refresh sync status
     try {
